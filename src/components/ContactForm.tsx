@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Mail, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import emailjs from 'emailjs-com';
 
 const ContactForm = () => {
   const { toast } = useToast();
@@ -17,20 +18,40 @@ const ContactForm = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate form submission
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      // Replace these with your actual EmailJS service ID, template ID, and user ID
+      const serviceId = 'YOUR_EMAILJS_SERVICE_ID';
+      const templateId = 'YOUR_EMAILJS_TEMPLATE_ID';
+      const userId = 'YOUR_EMAILJS_USER_ID';
+      
+      const templateParams = {
+        from_name: formData.name,
+        reply_to: formData.email,
+        message: formData.message,
+      };
+      
+      await emailjs.send(serviceId, templateId, templateParams, userId);
+      
       setFormData({ name: '', email: '', message: '' });
       
       toast({
         title: "Message sent successfully!",
         description: "Thanks for reaching out. I'll get back to you soon.",
       });
-    }, 1500);
+    } catch (error) {
+      console.error('Failed to send email:', error);
+      toast({
+        title: "Failed to send message",
+        description: "There was an error sending your message. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
