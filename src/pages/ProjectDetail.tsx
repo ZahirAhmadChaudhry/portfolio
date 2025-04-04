@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -77,7 +78,8 @@ const ProjectDetail = () => {
       
       if (foundProject && 
           'visualizations' in foundProject && 
-          foundProject.visualizations?.some(v => v.type === 'mermaid') && 
+          Array.isArray(foundProject.visualizations) && 
+          foundProject.visualizations.some(v => v.type === 'mermaid') && 
           window.mermaid) {
         try {
           window.mermaid.init(undefined, document.querySelectorAll('.mermaid'));
@@ -200,7 +202,7 @@ const ProjectDetail = () => {
                   {(project.challenges && project.challenges.length > 0) && (
                     <TabsTrigger value="challenges" className="rounded-t-lg rounded-b-none">Challenges</TabsTrigger>
                   )}
-                  {'visualizations' in project && project.visualizations && project.visualizations.length > 0 && (
+                  {'visualizations' in project && Array.isArray(project.visualizations) && project.visualizations.length > 0 && (
                     <TabsTrigger value="visualizations" className="rounded-t-lg rounded-b-none">Visualizations</TabsTrigger>
                   )}
                   {project.codeSnippet && (
@@ -270,11 +272,11 @@ const ProjectDetail = () => {
                   </TabsContent>
                 )}
                 
-                {'visualizations' in project && project.visualizations && project.visualizations.length > 0 && (
+                {'visualizations' in project && Array.isArray(project.visualizations) && project.visualizations.length > 0 && (
                   <TabsContent value="visualizations" className="prose prose-blue max-w-none mt-4">
                     <h2 className="text-2xl font-bold mb-4">Project Visualizations</h2>
                     <div className="grid grid-cols-1 gap-8">
-                      {project.visualizations.map((vis: any, index: number) => (
+                      {project.visualizations.map((vis: Visualization, index: number) => (
                         <div key={index} className="bg-gray-50 p-5 rounded-lg border border-gray-200">
                           {vis.title && <h3 className="text-lg font-medium mb-3">{vis.title}</h3>}
                           {vis.description && <p className="mb-4 text-gray-700">{vis.description}</p>}
