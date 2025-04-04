@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { projects } from '@/data/projects';
-import { ArrowLeft, Edit, Plus, Trash, Save, X, Copy } from 'lucide-react';
+import { ArrowLeft, Edit, Plus, Trash, Save, X, Copy, Image, Code, FileCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -11,10 +11,19 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 // Define project type to match data structure
+interface Visualization {
+  type: 'image' | 'svg' | 'mermaid';
+  title?: string;
+  description?: string;
+  content: string;
+  alt?: string;
+}
+
 interface Project {
   id: string;
   title: string;
@@ -24,12 +33,46 @@ interface Project {
   category: string;
   tags: string[];
   github?: string;
+  liveDemo?: string;
   challenges?: string[];
   solutions?: string[];
   achievements?: string[];
   codeSnippet?: string;
   technologies?: string[];
+  visualizations?: Visualization[];
 }
+
+// Visualization preview component
+const VisualizationPreview = ({ visualization }: { visualization: Visualization }) => {
+  if (!visualization) return null;
+
+  switch (visualization.type) {
+    case 'image':
+      return (
+        <img 
+          src={visualization.content} 
+          alt={visualization.alt || 'Visualization preview'} 
+          className="max-w-full h-auto max-h-60 object-contain"
+        />
+      );
+    case 'svg':
+      return (
+        <div 
+          className="svg-container border rounded-md p-4 bg-white"
+          dangerouslySetInnerHTML={{ __html: visualization.content }}
+        />
+      );
+    case 'mermaid':
+      return (
+        <div className="border rounded-md p-4 bg-white">
+          <div className="text-sm text-gray-500 mb-2">Mermaid diagram preview (renders on the project page)</div>
+          <pre className="text-xs overflow-auto max-h-40 bg-gray-100 p-2 rounded">{visualization.content}</pre>
+        </div>
+      );
+    default:
+      return <p>Unsupported visualization type</p>;
+  }
+};
 
 const Admin = () => {
   const { logout } = useAuth();
@@ -42,6 +85,9 @@ const Admin = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [codeGenerated, setCodeGenerated] = useState('');
   const [activeTab, setActiveTab] = useState('projects');
+  const [currentVisualization, setCurrentVisualization] = useState<Visualization | null>(null);
+  const [isVisualizationDialogOpen, setIsVisualizationDialogOpen] = useState(false);
+  const [editingVisualizationIndex, setEditingVisualizationIndex] = useState<number | null>(null);
 
   // Load projects from localStorage or use original data
   useEffect(() => {
@@ -70,7 +116,10 @@ const Admin = () => {
   };
 
   const handleEditProject = (project: Project) => {
-    setEditingProject({ ...project });
+    setEditingProject({ 
+      ...project,
+      visualizations: project.visualizations || [] 
+    });
     setIsDialogOpen(true);
   };
 
@@ -85,7 +134,8 @@ const Admin = () => {
       challenges: ['Challenge 1'],
       solutions: ['Solution 1'],
       achievements: ['Achievement 1'],
-      technologies: ['Technology 1']
+      technologies: ['Technology 1'],
+      visualizations: []
     };
     setEditingProject(newProject);
     setIsDialogOpen(true);
@@ -125,6 +175,85 @@ const Admin = () => {
       description: exists 
         ? "Your changes have been saved." 
         : "The new project has been added."
+    });
+  };
+
+  // Function to add a new visualization
+  const handleAddVisualization = () => {
+    setCurrentVisualization({
+      type: 'image',
+      title: '',
+      description: '',
+      content: '',
+      alt: ''
+    });
+    setEditingVisualizationIndex(null);
+    setIsVisualizationDialogOpen(true);
+  };
+
+  // Function to edit an existing visualization
+  const handleEditVisualization = (index: number) => {
+    if (!editingProject || !editingProject.visualizations) return;
+    
+    setCurrentVisualization({...editingProject.visualizations[index]});
+    setEditingVisualizationIndex(index);
+    setIsVisualizationDialogOpen(true);
+  };
+
+  // Function to save the visualization
+  const handleSaveVisualization = () => {
+    if (!editingProject || !currentVisualization) return;
+    
+    const updatedVisualizations = [...(editingProject.visualizations || [])];
+    
+    if (editingVisualizationIndex !== null) {
+      // Update existing visualization
+      updatedVisualizations[editingVisualizationIndex] = currentVisualization;
+    } else {
+      // Add new visualization
+      updatedVisualizations.push(currentVisualization);
+    }
+    
+    setEditingProject({
+      ...editingProject,
+      visualizations: updatedVisualizations
+    });
+    
+    setIsVisualizationDialogOpen(false);
+    setCurrentVisualization(null);
+    setEditingVisualizationIndex(null);
+    
+    toast({
+      title: editingVisualizationIndex !== null ? "Visualization Updated" : "Visualization Added",
+      description: "Your changes have been saved to the project."
+    });
+  };
+
+  // Function to delete a visualization
+  const handleDeleteVisualization = (index: number) => {
+    if (!editingProject || !editingProject.visualizations) return;
+    
+    const updatedVisualizations = [...editingProject.visualizations];
+    updatedVisualizations.splice(index, 1);
+    
+    setEditingProject({
+      ...editingProject,
+      visualizations: updatedVisualizations
+    });
+    
+    toast({
+      title: "Visualization Deleted",
+      description: "The visualization has been removed from the project."
+    });
+  };
+
+  // Handle input change for visualization fields
+  const handleVisualizationInputChange = (field: keyof Visualization, value: string) => {
+    if (!currentVisualization) return;
+    
+    setCurrentVisualization({
+      ...currentVisualization,
+      [field]: value
     });
   };
 
@@ -181,7 +310,27 @@ const Admin = () => {
     localProjects.forEach((project, index) => {
       codeLines.push('  {');
       Object.entries(project).forEach(([key, value]) => {
-        if (Array.isArray(value)) {
+        if (key === 'visualizations' && Array.isArray(value) && value.length > 0) {
+          codeLines.push(`    ${key}: [`);
+          value.forEach((vis: Visualization) => {
+            codeLines.push('      {');
+            Object.entries(vis).forEach(([visKey, visValue]) => {
+              if (typeof visValue === 'string') {
+                if (visKey === 'content' && vis.type === 'svg') {
+                  // For SVG content, use backticks to preserve formatting
+                  codeLines.push(`        ${visKey}: \`${visValue.replace(/`/g, '\\`')}\`,`);
+                } else if (visKey === 'content' && vis.type === 'mermaid') {
+                  // For mermaid content, use backticks to preserve formatting
+                  codeLines.push(`        ${visKey}: \`${visValue.replace(/`/g, '\\`')}\`,`);
+                } else {
+                  codeLines.push(`        ${visKey}: '${visValue.replace(/'/g, "\\'")}',`);
+                }
+              }
+            });
+            codeLines.push('      },');
+          });
+          codeLines.push('    ],');
+        } else if (Array.isArray(value)) {
           codeLines.push(`    ${key}: [`);
           value.forEach(item => {
             codeLines.push(`      '${item.replace(/'/g, "\\'")}',`);
@@ -389,6 +538,15 @@ const Admin = () => {
                     />
                   </div>
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="liveDemo">Live Demo URL (optional)</Label>
+                  <Input 
+                    id="liveDemo" 
+                    value={editingProject.liveDemo || ''} 
+                    onChange={(e) => handleInputChange('liveDemo', e.target.value)}
+                  />
+                </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="image">Image URL</Label>
@@ -558,6 +716,64 @@ const Admin = () => {
                   ))}
                 </div>
                 
+                {/* Visualizations Section */}
+                <div className="space-y-4 border-t pt-4 mt-4">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-lg font-medium">Visualizations</Label>
+                    <Button 
+                      variant="outline" 
+                      onClick={handleAddVisualization}
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Add Visualization
+                    </Button>
+                  </div>
+                  
+                  {(!editingProject.visualizations || editingProject.visualizations.length === 0) && (
+                    <div className="text-center py-6 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                      <p className="text-gray-500">No visualizations yet. Add some using the button above.</p>
+                    </div>
+                  )}
+                  
+                  {(editingProject.visualizations && editingProject.visualizations.length > 0) && (
+                    <div className="grid grid-cols-1 gap-4">
+                      {editingProject.visualizations.map((visualization, index) => (
+                        <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <h3 className="font-medium">
+                                {visualization.title || `Visualization ${index + 1}`}
+                              </h3>
+                              <p className="text-sm text-gray-500">
+                                Type: {visualization.type.charAt(0).toUpperCase() + visualization.type.slice(1)}
+                              </p>
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => handleDeleteVisualization(index)}
+                              >
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="default" 
+                                size="sm" 
+                                onClick={() => handleEditVisualization(index)}
+                              >
+                                <Edit className="h-4 w-4 mr-1" /> Edit
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-2">
+                            <VisualizationPreview visualization={visualization} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="codeSnippet">Code Snippet</Label>
                   <Textarea 
@@ -576,6 +792,141 @@ const Admin = () => {
                 </Button>
                 <Button onClick={handleSaveProject}>
                   <Save className="h-4 w-4 mr-2" /> Save Project
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+        
+        {/* Visualization Dialog */}
+        {currentVisualization && (
+          <Dialog open={isVisualizationDialogOpen} onOpenChange={setIsVisualizationDialogOpen}>
+            <DialogContent className="max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingVisualizationIndex !== null 
+                    ? 'Edit Visualization' 
+                    : 'Add New Visualization'
+                  }
+                </DialogTitle>
+                <DialogDescription>
+                  Configure the visualization for your project
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="vis-title">Title (optional)</Label>
+                  <Input 
+                    id="vis-title" 
+                    value={currentVisualization.title || ''} 
+                    onChange={(e) => handleVisualizationInputChange('title', e.target.value)}
+                    placeholder="Visualization title"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="vis-type">Visualization Type</Label>
+                  <Select 
+                    value={currentVisualization.type} 
+                    onValueChange={(value) => handleVisualizationInputChange('type', value as 'image' | 'svg' | 'mermaid')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="image">
+                        <div className="flex items-center">
+                          <Image className="h-4 w-4 mr-2" />
+                          <span>Image (URL)</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="svg">
+                        <div className="flex items-center">
+                          <Code className="h-4 w-4 mr-2" />
+                          <span>SVG Code</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="mermaid">
+                        <div className="flex items-center">
+                          <FileCode className="h-4 w-4 mr-2" />
+                          <span>Mermaid Diagram</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="vis-description">Description (optional)</Label>
+                  <Textarea 
+                    id="vis-description" 
+                    value={currentVisualization.description || ''} 
+                    onChange={(e) => handleVisualizationInputChange('description', e.target.value)}
+                    placeholder="Briefly describe what this visualization shows"
+                    rows={2}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="vis-content">
+                    {currentVisualization.type === 'image' ? 'Image URL' : 
+                     currentVisualization.type === 'svg' ? 'SVG Code' : 
+                     'Mermaid Diagram Code'}
+                  </Label>
+                  {currentVisualization.type === 'image' ? (
+                    <Input 
+                      id="vis-content" 
+                      value={currentVisualization.content} 
+                      onChange={(e) => handleVisualizationInputChange('content', e.target.value)}
+                      placeholder="https://example.com/image.jpg"
+                    />
+                  ) : (
+                    <Textarea 
+                      id="vis-content" 
+                      value={currentVisualization.content} 
+                      onChange={(e) => handleVisualizationInputChange('content', e.target.value)}
+                      placeholder={
+                        currentVisualization.type === 'svg' 
+                          ? '<svg width="100" height="100">...</svg>'
+                          : 'graph TD;\n    A-->B;\n    A-->C;\n    B-->D;\n    C-->D;'
+                      }
+                      rows={8}
+                      className="font-mono text-sm"
+                    />
+                  )}
+                </div>
+                
+                {currentVisualization.type === 'image' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="vis-alt">Alt Text (for accessibility)</Label>
+                    <Input 
+                      id="vis-alt" 
+                      value={currentVisualization.alt || ''} 
+                      onChange={(e) => handleVisualizationInputChange('alt', e.target.value)}
+                      placeholder="Description of the image for screen readers"
+                    />
+                  </div>
+                )}
+                
+                <div className="border-t pt-4 mt-2">
+                  <Label className="block mb-2">Preview</Label>
+                  <div className="bg-gray-50 border rounded-md p-4">
+                    {currentVisualization.content ? (
+                      <VisualizationPreview visualization={currentVisualization} />
+                    ) : (
+                      <p className="text-gray-500 text-center py-8">Add content to see a preview</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsVisualizationDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveVisualization}>
+                  <Save className="h-4 w-4 mr-2" /> Save Visualization
                 </Button>
               </DialogFooter>
             </DialogContent>
