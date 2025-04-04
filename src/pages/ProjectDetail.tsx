@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -7,8 +6,33 @@ import { ArrowLeft, Github, ExternalLink, ChevronRight } from 'lucide-react';
 import { projects } from '@/data/projects';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-// Visualization component to render different types of visualizations
-const Visualization = ({ data }: { data: any }) => {
+interface Visualization {
+  type: 'image' | 'svg' | 'mermaid';
+  content: string;
+  alt?: string;
+  title?: string;
+  description?: string;
+}
+
+interface ProjectType {
+  id: string;
+  title: string;
+  description: string;
+  fullDescription?: string;
+  image: string;
+  category: string;
+  tags: string[];
+  github?: string;
+  liveDemo?: string;
+  challenges?: string[];
+  solutions?: string[];
+  achievements?: string[];
+  codeSnippet?: string;
+  technologies?: string[];
+  visualizations?: Visualization[];
+}
+
+const Visualization = ({ data }: { data: Visualization }) => {
   if (!data) return null;
 
   switch (data.type) {
@@ -28,7 +52,6 @@ const Visualization = ({ data }: { data: any }) => {
         />
       );
     case 'mermaid':
-      // For mermaid diagrams, we'll use a placeholder that gets processed by client-side JS
       return (
         <div className="mermaid-diagram">
           <pre className="mermaid">
@@ -43,18 +66,19 @@ const Visualization = ({ data }: { data: any }) => {
 
 const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const [project, setProject] = useState<any | null>(null);
+  const [project, setProject] = useState<ProjectType | null>(null);
   
   useEffect(() => {
     if (id) {
       const foundProject = projects.find(p => p.id === id);
       setProject(foundProject || null);
       
-      // Scroll to top when project changes
       window.scrollTo(0, 0);
       
-      // Initialize mermaid if needed and available
-      if (foundProject?.visualizations?.some(v => v.type === 'mermaid') && window.mermaid) {
+      if (foundProject && 
+          'visualizations' in foundProject && 
+          foundProject.visualizations?.some(v => v.type === 'mermaid') && 
+          window.mermaid) {
         try {
           window.mermaid.init(undefined, document.querySelectorAll('.mermaid'));
         } catch (error) {
@@ -64,8 +88,6 @@ const ProjectDetail = () => {
     }
   }, [id]);
 
-  // Second useEffect specifically for mermaid rendering
-  // This helps when the DOM is fully updated with mermaid content
   useEffect(() => {
     const timer = setTimeout(() => {
       if (window.mermaid && document.querySelectorAll('.mermaid').length > 0) {
@@ -106,7 +128,6 @@ const ProjectDetail = () => {
     <>
       <Navbar />
       
-      {/* Header Section with Breadcrumb */}
       <section className="pt-28 pb-12 px-4 bg-gray-50">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center text-sm text-gray-500 mb-6">
@@ -118,7 +139,6 @@ const ProjectDetail = () => {
           </div>
           
           <div className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">
-            {/* Project Hero Section */}
             <div className="h-72 sm:h-96 overflow-hidden relative">
               <img 
                 src={project.image} 
@@ -141,7 +161,6 @@ const ProjectDetail = () => {
             </div>
             
             <div className="p-6 sm:p-8">
-              {/* Action Buttons */}
               <div className="flex flex-wrap justify-end items-center gap-3 mb-6">
                 {project.github && (
                   <a
@@ -167,7 +186,6 @@ const ProjectDetail = () => {
                 )}
               </div>
               
-              {/* Tags */}
               <div className="flex flex-wrap gap-2 mb-8">
                 {project.tags.map((tag: string) => (
                   <span key={tag} className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-xs font-medium">
@@ -176,14 +194,13 @@ const ProjectDetail = () => {
                 ))}
               </div>
               
-              {/* Content Tabs */}
               <Tabs defaultValue="overview" className="w-full">
                 <TabsList className="w-full justify-start mb-6 border-b pb-0">
                   <TabsTrigger value="overview" className="rounded-t-lg rounded-b-none">Overview</TabsTrigger>
                   {(project.challenges && project.challenges.length > 0) && (
                     <TabsTrigger value="challenges" className="rounded-t-lg rounded-b-none">Challenges</TabsTrigger>
                   )}
-                  {(project.visualizations?.length > 0) && (
+                  {'visualizations' in project && project.visualizations && project.visualizations.length > 0 && (
                     <TabsTrigger value="visualizations" className="rounded-t-lg rounded-b-none">Visualizations</TabsTrigger>
                   )}
                   {project.codeSnippet && (
@@ -253,7 +270,7 @@ const ProjectDetail = () => {
                   </TabsContent>
                 )}
                 
-                {(project.visualizations?.length > 0) && (
+                {'visualizations' in project && project.visualizations && project.visualizations.length > 0 && (
                   <TabsContent value="visualizations" className="prose prose-blue max-w-none mt-4">
                     <h2 className="text-2xl font-bold mb-4">Project Visualizations</h2>
                     <div className="grid grid-cols-1 gap-8">
