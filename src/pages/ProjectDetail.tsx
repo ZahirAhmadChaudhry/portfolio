@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -182,7 +183,7 @@ const ProjectDetail = () => {
                   {(project.challenges && project.challenges.length > 0) && (
                     <TabsTrigger value="challenges" className="rounded-t-lg rounded-b-none">Challenges</TabsTrigger>
                   )}
-                  {(project.visualizations && project.visualizations.length > 0) && (
+                  {(project.visualizations?.length > 0) && (
                     <TabsTrigger value="visualizations" className="rounded-t-lg rounded-b-none">Visualizations</TabsTrigger>
                   )}
                   {project.codeSnippet && (
@@ -252,7 +253,7 @@ const ProjectDetail = () => {
                   </TabsContent>
                 )}
                 
-                {(project.visualizations && project.visualizations.length > 0) && (
+                {(project.visualizations?.length > 0) && (
                   <TabsContent value="visualizations" className="prose prose-blue max-w-none mt-4">
                     <h2 className="text-2xl font-bold mb-4">Project Visualizations</h2>
                     <div className="grid grid-cols-1 gap-8">
